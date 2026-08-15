@@ -1,40 +1,30 @@
-Paste this:
-
 # 📚 Student Notes App
 
-
-A simple Student Notes application built with **Flask**, **MySQL**, and **Docker**.
-
+A simple **Student Notes application** built with **Flask, MySQL, and Docker**.
 
 The application allows users to:
 
-
-- Add student notes
-- View all notes
-- Delete notes
-- Store notes in a MySQL database
-- Run Flask and MySQL in separate Docker containers
-
+- ➕ Add notes
+- 📖 View notes
+- 🗑️ Delete notes
+- 💾 Store notes in MySQL
+- 🐳 Run Flask and MySQL using Docker containers
 
 ---
 
+## 🛠️ Tech Stack
 
-## 🛠️ Technologies Used
-
-
-- Python 3.11
-- Flask
-- MySQL
-- MySQL Connector/Python
-- Docker
-- HTML/CSS
-
+| Technology | Purpose |
+|---|---|
+| Python 3.11 | Application language |
+| Flask | Web framework |
+| MySQL | Database |
+| Docker | Containerization |
+| HTML/CSS | Frontend |
 
 ---
-
 
 ## 📁 Project Structure
-
 
 ```text
 student-notes-app/
@@ -47,43 +37,82 @@ student-notes-app/
 │
 └── templates/
     └── index.html
-🐳 Docker Setup
+```
 
-The Flask application runs inside a Docker container.
+---
 
-The application container listens on:
+## 🐳 Docker Architecture
 
-5000
+The application uses **two containers**:
 
-The host exposes it on:
+```text
+┌──────────────────────────┐
+│   Browser                │
+│   localhost:5001         │
+└────────────┬─────────────┘
+             │
+             │ Port 5001
+             ▼
+┌──────────────────────────┐
+│ Flask Container          │
+│ student-notes-container  │
+│ Port: 5000               │
+└────────────┬─────────────┘
+             │
+             │ Docker Network
+             │ student-notes-network
+             ▼
+┌──────────────────────────┐
+│ MySQL Container          │
+│ student-notes-mysql      │
+│ Port: 3306               │
+└──────────────────────────┘
+```
 
-5001
+The Flask container communicates with MySQL using the MySQL container name:
 
-So the application can be accessed at:
+```text
+student-notes-mysql
+```
 
-http://localhost:5001
-🗄️ MySQL Container
+---
 
-The application uses a separate MySQL container.
+## 🔨 Build the Flask Image
 
-The MySQL container is connected to the Flask container using a Docker bridge network.
+From the project directory:
 
-Example:
+```bash
+docker build -t student-notes-app .
+```
 
+---
+
+## 🗄️ Create the Docker Network
+
+```bash
 docker network create student-notes-network
+```
 
-Create the MySQL container:
+---
 
+## 🐬 Run MySQL Container
+
+```bash
 docker run -d \
   --name student-notes-mysql \
   --network student-notes-network \
   -e MYSQL_ROOT_PASSWORD=root \
   -e MYSQL_DATABASE=student_notes \
   mysql:latest
-🗃️ Create the Notes Table
+```
 
-After the MySQL container starts, create the notes table:
+---
 
+## 📝 Create the Notes Table
+
+Create the `notes` table inside the MySQL database:
+
+```bash
 docker exec -it student-notes-mysql \
 mysql -uroot -proot student_notes \
 -e "CREATE TABLE notes (
@@ -91,84 +120,130 @@ id INT AUTO_INCREMENT PRIMARY KEY,
 title VARCHAR(255) NOT NULL,
 content TEXT NOT NULL
 );"
-🔨 Build the Flask Docker Image
+```
 
-From the project directory:
+---
 
-docker build -t student-notes-app .
-▶️ Run the Flask Container
+## 🚀 Run Flask Container
 
-Run the Flask application on the Docker network:
+Run the Flask application on the same Docker network:
 
+```bash
 docker run -d \
   -p 5001:5000 \
   --name student-notes-container \
   --network student-notes-network \
   student-notes-app
-🌐 Open the Application
+```
 
-Open your browser and visit:
+---
 
+## 🌐 Access the Application
+
+Open your browser:
+
+```text
 http://localhost:5001
-🔌 Database Configuration
+```
 
-The Flask application connects to MySQL using the MySQL container name:
+---
 
+## 🔌 Database Configuration
+
+The Flask application connects to MySQL using:
+
+```python
 host="student-notes-mysql"
+```
 
 Database configuration:
 
-Host: student-notes-mysql
-User: root
+```text
+Host:     student-notes-mysql
+Port:     3306
+User:     root
 Password: root
 Database: student_notes
-Port: 3306
+```
 
-Because both containers are on the same Docker network, the Flask container can communicate with MySQL using the container name.
+Because both containers are connected to the same Docker network, Docker provides DNS resolution between the containers.
 
-📋 Useful Docker Commands
+---
 
-Check running containers:
+## 📋 Useful Docker Commands
 
+### Check running containers
+
+```bash
 docker ps
+```
 
-Check all containers:
+### Check all containers
 
+```bash
 docker ps -a
+```
 
-View Flask logs:
+### View Flask logs
 
+```bash
 docker logs student-notes-container
+```
 
-View MySQL logs:
+### View MySQL logs
 
+```bash
 docker logs student-notes-mysql
+```
 
-Check Docker networks:
+### Check Docker networks
 
+```bash
 docker network ls
+```
 
-Inspect the application network:
+### Inspect the network
 
-docker inspect student-notes-network
-🧹 Stop Containers
+```bash
+docker network inspect student-notes-network
+```
+
+---
+
+## 🛑 Stop Containers
+
+```bash
 docker stop student-notes-container
 docker stop student-notes-mysql
+```
 
-Remove containers:
+---
 
+## 🗑️ Remove Containers
+
+```bash
 docker rm student-notes-container
 docker rm student-notes-mysql
-⚠️ Important
+```
 
-This project is intended for learning Docker, Flask, and MySQL.
+---
 
-The database credentials used in this project are for local development only and should not be used in a production environment.
+## ⚠️ Development Note
 
-For production, use environment variables or Docker secrets instead of storing passwords directly in the application.
+This project is created for learning **Flask, MySQL, and Docker**.
 
-👩‍💻 Author
+The database credentials used in this project are for local development only.
 
-Jyotiprakash Khuntia
+For production applications, credentials should be stored using environment variables or Docker secrets.
 
-GitHub: https://github.com/jyotics24
+---
+
+## 👨‍💻 Author
+
+**Jyotiprakash Khuntia**
+
+GitHub: [@jyotics24](https://github.com/jyotics24)
+
+---
+
+⭐ If you found this project useful, feel free to star the repository!
