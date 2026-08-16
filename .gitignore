@@ -1,11 +1,23 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+
+# AWS
+.aws/
+credentials
+
+# MySQL backups
+*.sql
+*.sql.gz
+
 # Python
 __pycache__/
-*.py[cod]
+*.pyc
 
-# Virtual environment
-venv/
+# Environment files
 .env
-
-# MySQL / Docker
-*.sql.gz
-mysql-data/
+.env.*
