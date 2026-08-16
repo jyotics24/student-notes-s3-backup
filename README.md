@@ -1,249 +1,333 @@
-# 📚 Student Notes App
+Replace the README with this
+# Student Notes - MySQL Backup to Amazon S3
 
-A simple **Student Notes application** built with **Flask, MySQL, and Docker**.
 
-The application allows users to:
+A Dockerized Flask student-notes application with MySQL database backup to Amazon S3.
 
-- ➕ Add notes
-- 📖 View notes
-- 🗑️ Delete notes
-- 💾 Store notes in MySQL
-- 🐳 Run Flask and MySQL using Docker containers
 
----
+This project demonstrates how a Dockerized application can store data in MySQL and create database backups that are uploaded to Amazon S3.
 
-## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|---|---|
-| Python 3.11 | Application language |
-| Flask | Web framework |
-| MySQL | Database |
-| Docker | Containerization |
-| HTML/CSS | Frontend |
+## Architecture
 
----
-
-## 📁 Project Structure
 
 ```text
-student-notes-app/
+                    User
+                     |
+                     v
+              Flask Web UI
+                     |
+                     v
+             MySQL Container
+                     |
+                     | mysqldump
+                     v
+              Backup .sql file
+                     |
+                     v
+             AWS CLI / Script
+                     |
+                     v
+              Amazon S3 Bucket
+                     |
+                     v
+          Encrypted Backup Storage
+Technologies
+Python
+Flask
+MySQL
+Docker
+Docker Network
+AWS S3
+AWS CLI
+Terraform
+Git / GitHub
+Project Structure
+student-notes-s3-backup/
 │
 ├── app.py
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
-├── .gitignore
 │
-└── templates/
-    └── index.html
-```
+├── templates/
+│   └── index.html
+│
+├── scripts/
+│   └── backup-mysql-to-s3.sh
+│
+├── backups/
+│
+└── terraform/
+    ├── main.tf
+    ├── variables.tf
+    ├── outputs.tf
+    └── terraform.tfvars
+How the Application Works
 
----
+The Flask application provides a web UI where users can create student notes.
 
-## 🐳 Docker Architecture
+The data flow is:
 
-The application uses **two containers**:
+Flask UI
+   |
+   v
+MySQL
+   |
+   v
+mysqldump
+   |
+   v
+SQL backup
+   |
+   v
+Amazon S3
+1. Start MySQL
 
-```text
-┌──────────────────────────┐
-│   Browser                │
-│   localhost:5001         │
-└────────────┬─────────────┘
-             │
-             │ Port 5001
-             ▼
-┌──────────────────────────┐
-│ Flask Container          │
-│ student-notes-container  │
-│ Port: 5000               │
-└────────────┬─────────────┘
-             │
-             │ Docker Network
-             │ student-notes-network
-             ▼
-┌──────────────────────────┐
-│ MySQL Container          │
-│ student-notes-mysql      │
-│ Port: 3306               │
-└──────────────────────────┘
-```
+Create the Docker network if it does not already exist:
 
-The Flask container communicates with MySQL using the MySQL container name:
-
-```text
-student-notes-mysql
-```
-
----
-
-## 🔨 Build the Flask Image
-
-From the project directory:
-
-```bash
-docker build -t student-notes-app .
-```
-
----
-
-## 🗄️ Create the Docker Network
-
-```bash
 docker network create student-notes-network
-```
 
----
+Run MySQL:
 
-## 🐬 Run MySQL Container
-
-```bash
 docker run -d \
   --name student-notes-mysql \
   --network student-notes-network \
   -e MYSQL_ROOT_PASSWORD=root \
   -e MYSQL_DATABASE=student_notes \
   mysql:latest
-```
 
----
+Check MySQL:
 
-## 📝 Create the Notes Table
+docker exec student-notes-mysql mysqladmin ping -u root -proot
 
-Create the `notes` table inside the MySQL database:
+Expected:
 
-```bash
-docker exec -it student-notes-mysql \
-mysql -uroot -proot student_notes \
--e "CREATE TABLE notes (
-id INT AUTO_INCREMENT PRIMARY KEY,
-title VARCHAR(255) NOT NULL,
-content TEXT NOT NULL
-);"
-```
+mysqld is alive
+2. Start the Flask Application
 
----
+Build the application image:
 
-## 🚀 Run Flask Container
+docker build -t student-notes-s3-backup .
 
-Run the Flask application on the same Docker network:
+Run the Flask container:
 
-```bash
 docker run -d \
-  -p 5001:5000 \
-  --name student-notes-container \
+  --name student-notes-app \
   --network student-notes-network \
-  student-notes-app
-```
+  -p 5000:5000 \
+  student-notes-s3-backup:latest
 
----
+Open the application:
 
-## 🌐 Access the Application
+http://localhost:5000
 
-Open your browser:
+You can now add student notes from the Flask UI.
 
-```text
-http://localhost:5001
-```
+3. Verify Data in MySQL
 
----
+The notes created from the UI are stored in MySQL.
 
-## 🔌 Database Configuration
+Example:
 
-The Flask application connects to MySQL using:
+docker exec student-notes-mysql \
+  mysql -u root -proot student_notes \
+  -e "SELECT * FROM notes;"
+4. Create the S3 Bucket Using Terraform
 
-```python
-host="student-notes-mysql"
-```
+The S3 bucket is created using Terraform.
 
-Database configuration:
+Go to the Terraform directory:
 
-```text
-Host:     student-notes-mysql
-Port:     3306
-User:     root
-Password: root
-Database: student_notes
-```
+cd terraform
 
-Because both containers are connected to the same Docker network, Docker provides DNS resolution between the containers.
+Initialize Terraform:
 
----
+terraform init
 
-## 📋 Useful Docker Commands
+Validate the configuration:
 
-### Check running containers
+terraform validate
+
+Review the infrastructure:
+
+terraform plan
+
+Create the S3 bucket:
+
+terraform apply
+
+Terraform creates an S3 bucket with:
+
+Server-side encryption
+Public access blocked
+Terraform-managed infrastructure
+
+Get the bucket name:
+
+terraform output
+5. Manual MySQL Backup to S3
+
+A MySQL backup can be created manually using:
+
+docker exec student-notes-mysql \
+  mysqldump --single-transaction \
+  --set-gtid-purged=OFF \
+  -u root -proot student_notes \
+  > backups/student_notes.sql
+
+Upload the backup to S3:
+
+aws s3 cp backups/student_notes.sql \
+  s3://YOUR-BUCKET-NAME/backups/student_notes.sql
+
+Verify:
+
+aws s3 ls s3://YOUR-BUCKET-NAME/backups/
+6. Automated Backup Script
+
+The project contains:
+
+scripts/backup-mysql-to-s3.sh
+
+Make it executable:
+
+chmod +x scripts/backup-mysql-to-s3.sh
+
+Run:
+
+./scripts/backup-mysql-to-s3.sh
+
+The script:
+
+Checks whether MySQL is running
+Creates a MySQL dump
+Adds a timestamp to the backup filename
+Stores the backup in the backups/ directory
+Uploads the backup to Amazon S3
+Reports whether the backup was successful
+
+Example:
+
+Starting MySQL backup
+Checking MySQL container...
+MySQL container is running.
+Creating MySQL dump...
+MySQL dump created.
+Uploading backup to S3...
+Backup uploaded successfully.
+Backup completed successfully
+7. Verify the Backup in S3
+
+List the backups:
+
+aws s3 ls s3://YOUR-BUCKET-NAME/backups/
+
+Example:
+
+student_notes.sql
+student_notes_2026-08-16_19-06-08.sql
+8. Restore a Backup
+
+A backup stored in S3 can be downloaded:
+
+aws s3 cp \
+  s3://YOUR-BUCKET-NAME/backups/student_notes_YYYY-MM-DD_HH-MM-SS.sql \
+  restore/
+
+The SQL file can then be restored into MySQL.
+
+Example:
+
+cat restore/student_notes.sql | \
+docker exec -i student-notes-mysql \
+mysql -u root -proot student_notes
+Security
+
+The project uses:
+
+S3 server-side encryption
+S3 public-access blocking
+Terraform for infrastructure management
+.gitignore to prevent Terraform state and database backups from being committed
+Never commit AWS credentials
+
+AWS access keys, secret keys, passwords, .env files and Terraform state files should not be pushed to GitHub.
+
+Lab Question
+Q-7: How can you connect Docker with Amazon S3 for storing application data or files?
+
+Docker can connect to Amazon S3 by using AWS CLI or an AWS SDK such as Boto3.
+
+In this project, the Flask application stores student notes in MySQL running inside Docker. A mysqldump backup is created from the MySQL container and uploaded to an Amazon S3 bucket using AWS CLI.
+
+Terraform is used to create and configure the S3 bucket with encryption and public-access blocking.
+
+Therefore, the data flow is:
+
+Dockerized Flask Application
+          |
+          v
+     MySQL Container
+          |
+          v
+     MySQL Backup
+          |
+          v
+       AWS CLI
+          |
+          v
+     Amazon S3
+Future Improvements
+
+For a production environment, this architecture could be extended to:
+
+Flask
+  ↓
+Amazon RDS MySQL
+  ↓
+Automated backups
+  ↓
+S3 / backup storage
+  ↓
+Retention
+  ↓
+Encryption
+  ↓
+CloudWatch monitoring
+
+This lab demonstrates the core Docker-to-S3 backup workflow.
+
+
+
+### 3. Save the file
+
+
+In VS Code:
+
+
+**Ctrl + S**
+
+
+Then go back to Git Bash and check:
+
 
 ```bash
-docker ps
-```
+git status
 
-### Check all containers
+You should now see:
 
-```bash
-docker ps -a
-```
+modified: README.md
+modified: .gitignore
+untracked: scripts/
+untracked: terraform/
 
-### View Flask logs
+Then we can commit everything safely:
 
-```bash
-docker logs student-notes-container
-```
+git add README.md .gitignore scripts/ terraform/
 
-### View MySQL logs
+Before committing, run:
 
-```bash
-docker logs student-notes-mysql
-```
+git status
 
-### Check Docker networks
-
-```bash
-docker network ls
-```
-
-### Inspect the network
-
-```bash
-docker network inspect student-notes-network
-```
-
----
-
-## 🛑 Stop Containers
-
-```bash
-docker stop student-notes-container
-docker stop student-notes-mysql
-```
-
----
-
-## 🗑️ Remove Containers
-
-```bash
-docker rm student-notes-container
-docker rm student-notes-mysql
-```
-
----
-
-## ⚠️ Development Note
-
-This project is created for learning **Flask, MySQL, and Docker**.
-
-The database credentials used in this project are for local development only.
-
-For production applications, credentials should be stored using environment variables or Docker secrets.
-
----
-
-## 👨‍💻 Author
-
-**Jyotiprakash Khuntia**
-
-GitHub: [@jyotics24](https://github.com/jyotics24)
-
----
-
-⭐ If you found this project useful, feel free to star the repository!
+Send me that git status output. I'll check that no .sql, AWS credentials, or terraform.tfstate are accidentally being pushed before you do the final commit/push.
